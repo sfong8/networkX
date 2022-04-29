@@ -1,10 +1,11 @@
 import pandas as pd
 df1 = pd.read_csv(r'./data/yellow_tripdata_2021-01.csv')
-df2 = pd.read_csv(r'./data/yellow_tripdata_2021-02.csv')
-df3 = pd.read_csv(r'./data/yellow_tripdata_2021-03.csv')
-df4 = pd.read_csv(r'./data/yellow_tripdata_2021-04.csv')
-# df = pd.read_csv(r'./data/yellow_tripdata_2021-04.csv')
-df= pd.concat([df1,df2,df3,df4])
+import os
+df= pd.DataFrame()
+for filename in os.listdir('./data/'):
+    if filename.startswith('yellow_tripdata_2021'):
+        temp=pd.read_csv(fr'./data/{filename}')
+        df=pd.concat([df,temp])
 ##distinct ratecode
 
 df['RatecodeID'].value_counts()
@@ -23,6 +24,7 @@ df['hour'] = df['tpep_pickup_datetime_dt'].apply(lambda x:x.hour)
 df['amount'] = df['total_amount'] - df['tip_amount']
 from matplotlib import pyplot as plt
 df=df[df['amount']>0]
+df=df[df['trip_distance']>0]
 df2 = df[df['duration']<180]
 df3 = df2.sort_values(['tip_amount'],ascending=False)
 
@@ -36,6 +38,6 @@ df3=df3[(df3['PULocationID']!=264) & (df3['DOLocationID']!=264) ]
 df3['count']=1
 df3_grouped = df3.groupby(['PULocationID','DOLocationID']).mean().reset_index()
 df3_grouped2 = df3.groupby(['PULocationID','DOLocationID']).agg({'amount':'mean', 'duration':'mean','count':'sum','trip_distance':'mean'}).reset_index()
-
+df3_grouped2=df3_grouped2[df3_grouped2['count']>100 ]
 
 df3_grouped2.to_parquet('combined_processed.parquet')

@@ -2,7 +2,7 @@ import pandas as pd
 import networkx as nx
 file_name = 'combined'
 df = pd.read_parquet(f'{file_name}_processed.parquet')
-
+df=df[df['count']>=100 ]
 dict_x = {1:'Newark Airport',
 2:'Jamaica Bay',
 3:'Allerton/Pelham Gardens',
@@ -284,9 +284,22 @@ degrees_df = degrees_df.sort_values(['count'],ascending=False)
 degrees_df['zone'] = degrees_df['index'].apply(lambda x : dict_x.get(x))
 degrees_df.to_csv(f'degrees_connected_{file_name}.csv',index=None)
 
-
+source = 132
+destin = 15
 ###shortest path example, 108- 15
 G=nx.from_pandas_edgelist(df, 'PULocationID', 'DOLocationID', [ 'amount', 'duration', 'count','trip_distance'], create_using=nx.DiGraph())
-nx.shortest_path(G,source=55, target=15,weight='trip_distance')
-nx.shortest_path(G,source=55, target=15,weight='duration')
-nx.shortest_path(G,source=55, target=15,weight='amount')
+short_distance =nx.shortest_path(G,source=source, target=destin,weight='trip_distance')
+short_duration = nx.shortest_path(G,source=source, target=destin,weight='duration')
+short_amount=nx.shortest_path(G,source=source, target=destin,weight='amount')
+
+def subset_df(list, x):
+    length = len(list)
+    empty_df = pd.DataFrame()
+    for i in range(length-1):
+        y = x[(x['PULocationID']==list[i]) & (x['DOLocationID']==list[i+1])]
+        empty_df=pd.concat([empty_df,y])
+    return empty_df
+
+short_distance_df = subset_df(short_distance,df)
+short_duration_df = subset_df(short_duration,df)
+short_amount_df = subset_df(short_amount,df)
