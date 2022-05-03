@@ -38,6 +38,6 @@ df3=df3[(df3['PULocationID']!=264) & (df3['DOLocationID']!=264) ]
 df3['count']=1
 df3_grouped = df3.groupby(['PULocationID','DOLocationID']).mean().reset_index()
 df3_grouped2 = df3.groupby(['PULocationID','DOLocationID']).agg({'amount':'mean', 'duration':'mean','count':'sum','trip_distance':'mean'}).reset_index()
-df3_grouped2=df3_grouped2[df3_grouped2['count']>100 ]
+# df3_grouped2=df3_grouped2[df3_grouped2['count']> ]
 
 df3_grouped2.to_parquet('combined_processed.parquet')

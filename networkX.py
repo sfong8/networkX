@@ -2,7 +2,7 @@ import pandas as pd
 import networkx as nx
 file_name = 'combined'
 df = pd.read_parquet(f'{file_name}_processed.parquet')
-df=df[df['count']>=100 ]
+df=df[df['count']>=10 ]
 dict_x = {1:'Newark Airport',
 2:'Jamaica Bay',
 3:'Allerton/Pelham Gardens',
@@ -270,36 +270,80 @@ dict_x = {1:'Newark Airport',
 
 # df['PULocationID']=df['PULocationID'].apply(lambda x : dict_x.get(x))
 # df['DOLocationID']=df['DOLocationID'].apply(lambda x : dict_x.get(x))
-G=nx.from_pandas_edgelist(df, 'PULocationID', 'DOLocationID', [ 'amount', 'duration', 'count','trip_distance'])
+
+G=nx.from_pandas_edgelist(df, source= 'PULocationID', ##pick up location
+                          target= 'DOLocationID', ## drop-off location
+                          edge_attr=[ 'amount', 'duration', 'count','trip_distance'],
+                          create_using=nx.DiGraph() ##directed graph
+                          )
 
 
-# nx.draw(G)
+# nx.draw(G,with_labels=True,pos=nx.spring_layout(G))
 
 G.degree()
-max(dict(G.degree()).items(), key = lambda x : x[1])
-
+# max(dict(G.degree()).items(), key = lambda x : x[1])
+r_eig = nx.eigenvector_centrality(G)
 degrees_df = pd.DataFrame.from_dict(dict(G.degree),orient='index').reset_index()
-degrees_df.columns = ['index','count']
-degrees_df = degrees_df.sort_values(['count'],ascending=False)
-degrees_df['zone'] = degrees_df['index'].apply(lambda x : dict_x.get(x))
+degrees_df.columns = ['location_id','degree']
+degrees_df = degrees_df.sort_values(['degree'],ascending=False)
+degrees_df['zone'] = degrees_df['location_id'].apply(lambda x : dict_x.get(x))
+degrees_df = degrees_df[['location_id','zone','degree']]
 degrees_df.to_csv(f'degrees_connected_{file_name}.csv',index=None)
 
-source = 132
-destin = 15
+close_degrees_df_in = pd.DataFrame.from_dict(dict(nx.closeness_centrality(G,distance='trip_distance')),orient='index').reset_index()
+close_degrees_df_in.columns = ['location_id','closeness']
+close_degrees_df_in = close_degrees_df_in.sort_values(['closeness'],ascending=False)
+close_degrees_df_in['zone'] = close_degrees_df_in['location_id'].apply(lambda x : dict_x.get(x))
+close_degrees_df_in = close_degrees_df_in[['location_id','zone','closeness']]
+
+between_degrees_df_in = pd.DataFrame.from_dict(dict(nx.betweenness_centrality(G,weight='trip_distance')),orient='index').reset_index()
+between_degrees_df_in.columns = ['location_id','betweenness']
+between_degrees_df_in = between_degrees_df_in.sort_values(['betweenness'],ascending=False)
+between_degrees_df_in['zone'] = between_degrees_df_in['location_id'].apply(lambda x : dict_x.get(x))
+between_degrees_df_in = between_degrees_df_in[['location_id','zone','betweenness']]
+
+
+
+# eig_degrees_df_in = pd.DataFrame.from_dict(dict(nx.eigenvector_centrality(G,distance='trip_distance')),orient='index').reset_index()
+# eig_degrees_df_in.columns = ['location_id','degree']
+# eig_degrees_df_in = eig_degrees_df_in.sort_values(['degree'],ascending=False)
+# eig_degrees_df_in['zone'] = eig_degrees_df_in['location_id'].apply(lambda x : dict_x.get(x))
+# eig_degrees_df_in = eig_degrees_df_in[['location_id','zone','degree']]
+
+
+# eig_degrees_df_out = pd.DataFrame.from_dict(dict(nx.eigenvector_centrality(G.reverse())),orient='index').reset_index()
+# eig_degrees_df_out.columns = ['location_id','degree']
+# eig_degrees_df_out = eig_degrees_df_out.sort_values(['degree'],ascending=False)
+# eig_degrees_df_out['zone'] = eig_degrees_df_out['location_id'].apply(lambda x : dict_x.get(x))
+# eig_degrees_df_out = eig_degrees_df_out[['location_id','zone','degree']]
+# degrees_df.to_csv(f'degrees_connected_{file_name}.csv',index=None)
+
 ###shortest path example, 108- 15
 G=nx.from_pandas_edgelist(df, 'PULocationID', 'DOLocationID', [ 'amount', 'duration', 'count','trip_distance'], create_using=nx.DiGraph())
-short_distance =nx.shortest_path(G,source=source, target=destin,weight='trip_distance')
-short_duration = nx.shortest_path(G,source=source, target=destin,weight='duration')
-short_amount=nx.shortest_path(G,source=source, target=destin,weight='amount')
+
+source = 14
+destination = 101
+shortest_distance =nx.shortest_path(G,source=source, target=destination,weight='trip_distance')
+shortest_duration = nx.shortest_path(G,source=source, target=destination,weight='duration')
+shortest_amount=nx.shortest_path(G,source=source, target=destination,weight='amount')
+
 
 def subset_df(list, x):
     length = len(list)
     empty_df = pd.DataFrame()
     for i in range(length-1):
         y = x[(x['PULocationID']==list[i]) & (x['DOLocationID']==list[i+1])]
+        y['pu_zone'] = y['PULocationID'].apply(lambda x : dict_x.get(x))
+        y['do_zone'] = y['DOLocationID'].apply(lambda x: dict_x.get(x))
         empty_df=pd.concat([empty_df,y])
     return empty_df
 
-short_distance_df = subset_df(short_distance,df)
-short_duration_df = subset_df(short_duration,df)
-short_amount_df = subset_df(short_amount,df)
+short_distance_df = subset_df(shortest_distance,df)
+short_duration_df = subset_df(shortest_duration,df)
+short_amount_df = subset_df(shortest_amount,df)
+
+
+short_distance_df.to_csv('short_distance_df.csv',index=None)
+short_duration_df.to_csv('short_duration_df.csv',index=None)
+short_amount_df.to_csv('short_amount_df.csv',index=None)
+x = df[(df['PULocationID']==194) &(df['PULocationID']==64) ]
